@@ -20,7 +20,8 @@ ProcessConfig = ANTLER
   Run = pMarineViewer	@ NewConsole = false
   Run = uProcessWatch @ NewConsole = false
   Run = pHelmIvP      @ NewConsole = false
-  //Run = pOdometry     @ NewConsole = false
+  Run = pOdometry     @ NewConsole = false
+  Run = pLogger       @ NewConsole = false
 }
 
 //------------------------------------------
@@ -28,10 +29,10 @@ ProcessConfig = ANTLER
 
 ProcessConfig = uSimMarineV22
 {
-  AppTick	  = 10
-  CommsTick	= 10
+  AppTick	  = 20
+  CommsTick	= 20
 
-  START_X       = 0
+  START_X       = 50
   START_Y       = 0
   START_SPEED   = 0
   START_HEADING = 180
@@ -80,8 +81,8 @@ ProcessConfig = pHelmIvP
 
 ProcessConfig = pMarinePIDV22
 {
-  AppTick    = 20
-  CommsTick  = 20
+  AppTick    = 10
+  CommsTick  = 10
 
   VERBOSE       = true
   DEPTH_CONTROL = false
@@ -150,3 +151,29 @@ ProcessConfig = pNodeReporter
 
   vessel_type = kayak
 }
+
+/------------------------------------------
+// pOdometry config block
+
+ProcessConfig = pOdometry
+{
+  AppTick	  = 10
+  CommsTick	= 10
+  app_logging=log
+  nav_stale_thresh = 10    // Set threshold to 15 seconds
+  distance_units = feet    // Options: meters, feet, yards, kilometers, miles
+}
+
+
+/------------------------------------------
+//pLogger config block
+
+ProcessConfig = pLogger
+{
+  AppTick = 8
+  CommsTick = 8
+
+  AsyncLog = true
+  WildCardLogging = true
+}
+
