@@ -23,9 +23,9 @@ ProcessConfig = ANTLER
   Run = uSimMarineV22   @ NewConsole = false
   Run = pMarinePIDV22   @ NewConsole = false
   Run = pHelmIvP        @ NewConsole = false
-  Run = pMarineViewer	@ NewConsole = false
-  Run = uProcessWatch	@ NewConsole = false
-  Run = pNodeReporter	@ NewConsole = false
+  Run = pMarineViewer  	@ NewConsole = false
+  Run = uProcessWatch 	@ NewConsole = false
+  Run = pNodeReporter 	@ NewConsole = false
   Run = pRealm	        @ NewConsole = false
 }
 //------------------------------------------
@@ -169,11 +169,6 @@ ProcessConfig = pMarineViewer
 
   trails_point_size   = 1
 
-	//op_vertex = x=-83, y=-47,    lwidth=1,lcolor=yellow,looped=true,group=moa
-  //op_vertex = x=-46.4, y=-129.2, lwidth=1,lcolor=yellow,looped=true,group=moa
-  //op_vertex = x=94.6, y=-62.2,   lwidth=1,lcolor=yellow,looped=true,group=moa
-  //op_vertex = x=58,   y=20,    lwidth=1,lcolor=yellow,looped=true,group=moa
-
   // Appcast configuration
   appcast_height       = 75
   appcast_width        = 30
@@ -182,14 +177,6 @@ ProcessConfig = pMarineViewer
   nodes_font_size      = xlarge
   procs_font_size      = xlarge
   appcast_font_size    = large
-  
-  // datum_viewable = true
-  // datum_size     = 18
-  // gui_size = small
-
-  // left_context[survey-point] = DEPLOY=true
-  // left_context[survey-point] = MOOS_MANUAL_OVERRIDE=false
-  // left_context[survey-point] = RETURN=false
 
   right_context[return] = DEPLOY=true
   right_context[return] = MOOS_MANUAL_OVERRIDE=false

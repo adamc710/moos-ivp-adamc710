@@ -153,7 +153,8 @@ Behavior = BHV_ConstantDepth
    condition    = DEPLOY=true
    condition    = ((LOITER_REGION=west) or (LOITER_REGION=east))  
    condition    = STATION_KEEP = false
-   duration     = 200                  
+   duration     = 200      
+   duration_idle_decay = false            
    perpetual    = true
    endflag      = DEPTH=0
    endflag      = STATION_KEEP=true
@@ -165,10 +166,11 @@ Behavior = BHV_ConstantDepth
    // Timer to Get GPS Fix
    // ---------------------------
    name         = GPSTimer            
-   condition    = STATION_KEEP=true   
+   condition    = STATION_KEEP=true  
    condition    = DEPTH=0 
-   duration     = 60                   
-   perpetual    = false
+   duration     = 60 
+   duration_idle_decay = false                  
+   perpetual    = true
    endflag      = STATION_KEEP=false
    endflag      = ((LOITER_REGION=west) or (LOITER_REGION=east))
  }
