@@ -1,0 +1,93 @@
+//--------    NAME: ADAM COHEN   -------------
+//--------    Date: 3/4/25   -------------
+//--------    FILE: bravo_dbl.bhv   -------------
+
+initialize   DEPLOY = false
+initialize   RETURN = false
+initialize   LOITER_REGION=west
+
+Behavior = BHV_Loiter
+ {
+   // West Loiter
+   // ---------------------------
+   name         = west                  // example
+   pwt          = 100                   // default
+   condition = LOITER_REGION=west
+   condition = RETURN = false
+   condition = DEPLOY = true
+   perpetual = true
+   updates      = LOITER_UPDATES        // example
+   duration     = 150                   // added duration parameter
+   duration_idle_decay = false
+   endflag = LOITER_REGION=east
+
+   // Parameters specific to this behavior
+   // ------------------------------------
+        acquire_dist = 10               // default
+      capture_radius = 1                // default  
+     center_activate = false            // default
+           clockwise = false            // changed to counter-clockwise
+         slip_radius = 15               // default
+               speed = 2.5              // changed from 0
+       spiral_factor = -2               // default
+
+             polygon = radial:: x=100,y=-75,radius=30,pts=8  // example
+         post_suffix = west                                  // example
+
+      center_assign = 0,0                // example
+      xcenter_assign = 100               // example
+      ycenter_assign = -75               // example
+
+
+        visual_hints = vertex_size  = 1             // default
+        visual_hints = edge_size    = 1             // default
+        visual_hints = vertex_color = dodger_blue   // default
+        visual_hints = edge_color   = white         // default
+        visual_hints = nextpt_color = yellow        // default
+        visual_hints = nextpt_lcolor = aqua         // default
+        visual_hints = nextpt_vertex_size = 5       // default
+        visual_hints = label        = WEST          // example
+ }
+
+Behavior = BHV_Loiter
+{
+  // East Loiter
+  // ---------------------------
+  name         = east                  // example
+  pwt          = 100                   // default
+  condition = LOITER_REGION=east
+  condition = RETURN = false
+  condition = DEPLOY = true
+  perpetual = true
+  updates      = LOITER_UPDATES        // example
+  duration     = 150                   // added duration parameter
+  duration_idle_decay = false
+  endflag = LOITER_REGION=west
+
+  // Parameters specific to this behavior
+  // ------------------------------------
+       acquire_dist = 10               // default
+     capture_radius = 1                // default  
+    center_activate = false            // default
+          clockwise = false            // changed to counter-clockwise
+        slip_radius = 15               // default
+              speed = 2.5              // changed from 0
+      spiral_factor = -2               // default
+
+            polygon = radial:: x=160,y=-50,radius=20,pts=8  // example
+        post_suffix = east                                  // example
+
+     center_assign = 0,0                // example
+     xcenter_assign = 160               // example
+     ycenter_assign = -50               // example
+
+
+       visual_hints = vertex_size  = 1             // default
+       visual_hints = edge_size    = 1             // default
+       visual_hints = vertex_color = dodger_blue   // default
+       visual_hints = edge_color   = white         // default
+       visual_hints = nextpt_color = yellow        // default
+       visual_hints = nextpt_lcolor = aqua         // default
+       visual_hints = nextpt_vertex_size = 5       // default
+       visual_hints = label        = EAST
+}

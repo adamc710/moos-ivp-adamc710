@@ -1,23 +1,20 @@
 //--------    NAME: ADAM COHEN   -------------
 //--------    Date: 3/4/25   -------------
-//--------    FILE: bravo_uuv_surface.bhv   -------------
+//--------    FILE: bravo_uuv.bhv   -------------
 
 initialize   DEPLOY = false
 initialize   RETURN = false
 initialize   LOITER_REGION=west
-initialize   STATION_KEEP = false
-initialize   DEPTH = 30
 
 Behavior = BHV_Loiter
  {
-   // Loiter West
+   // West Loiter
    // ---------------------------
    name         = west                  // example
-   pwt          = 50                   // default
+   pwt          = 100                   // default
    condition = LOITER_REGION=west
    condition = RETURN = false
    condition = DEPLOY = true
-   condition = STATION_KEEP=false  // Add to ensure no loitering during surfacing
    perpetual = true
    updates      = LOITER_UPDATES        // example
    duration     = 150                   // added duration parameter
@@ -54,14 +51,13 @@ Behavior = BHV_Loiter
 
 Behavior = BHV_Loiter
 {
-  // Loiter East
+  // East Loiter
   // ---------------------------
   name         = east                  // example
-  pwt          = 50                   // default
+  pwt          = 100                   // default
   condition = LOITER_REGION=east
   condition = RETURN = false
   condition = DEPLOY = true
-  condition = STATION_KEEP=false  // Add to ensure no loitering during surfacing
   perpetual = true
   updates      = LOITER_UPDATES        // example
   duration     = 150                   // added duration parameter
@@ -100,12 +96,11 @@ Behavior = BHV_ConstantDepth
  {
    // Depth at West Loiter
    // ---------------------------
-   name         = deepw                 // example
+   name         = deepw                  // example
    pwt          = 100                   // default
    condition = LOITER_REGION=west
    condition = RETURN = false
    condition = DEPLOY = true
-   condition = STATION_KEEP = false
    perpetual = true
    updates      = LOITER_UPDATES        // example
    duration     = 150                   // added duration parameter
@@ -115,9 +110,9 @@ Behavior = BHV_ConstantDepth
    // Parameters specific to this behavior
    // ------------------------------------
             basewidth = 100          // default
-                depth = 30           // default
+                depth = 30            // default
    depth_mismatch_var = DEPTH_DIFF   // example
-             duration = 150          // default (Choose something higher!)
+             duration = 150            // default (Choose something higher!)
             peakwidth = 3            // default
           summitdelta = 50           // default
  }
@@ -126,12 +121,11 @@ Behavior = BHV_ConstantDepth
  {
    // Depth at East Loiter
    // ---------------------------
-  name         = deepe                 // example
+  name         = deepe                  // example
   pwt          = 100                   // default
   condition = LOITER_REGION=east
   condition = RETURN = false
   condition = DEPLOY = true
-  condition = STATION_KEEP = false
   perpetual = true
   updates      = LOITER_UPDATES        // example
   duration     = 150                   // added duration parameter
@@ -141,69 +135,9 @@ Behavior = BHV_ConstantDepth
    // Parameters specific to this behavior
    // ------------------------------------
             basewidth = 100          // default
-                depth = 10           // default
+                depth = 10            // default
    depth_mismatch_var = DEPTH_DIFF   // example
-             duration = 150          // default (Choose something higher!)
+             duration = 150            // default (Choose something higher!)
             peakwidth = 3            // default
           summitdelta = 50           // default
- }
-
- Behavior = BHV_ConstantDepth
-{
-  name         = SurfaceDepth
-  pwt          = 200  // Higher priority to override loiter
-  condition    = STATION_KEEP = true
-  depth        = 0
-  perpetual    = false
-}
-
- Behavior = BHV_Timer
- {
-   // Timer to Surface
-   // ---------------------------
-   name         = SurfaceTimer            
-   condition    = DEPLOY=true
-   condition    = ((LOITER_REGION=west) or (LOITER_REGION=east))  
-   condition    = STATION_KEEP = false
-   duration     = 200      
-   duration_idle_decay = false            
-   perpetual    = true
-   //endflag    = DEPTH=0
-   endflag      = STATION_KEEP=true
-   //endflag    = SPEED=0
-   pwt          = 200
- }
-
- Behavior = BHV_Timer
- {
-   // Timer to Get GPS Fix
-   // ---------------------------
-   name         = GPSTimer            
-   condition    = STATION_KEEP=true  
-   condition    = NAV_DEPTH < 0.1
-   //condition    = SPEED=0
-   duration     = 60 
-   duration_idle_decay = false                  
-   perpetual    = true
-   endflag      = STATION_KEEP=false
-   endflag      = ((LOITER_REGION=west) or (LOITER_REGION=east))
- }
-
- Behavior=BHV_Waypoint
-{
-  name      = waypt_return
-  pwt       = 100
-  condition = RETURN = false
-  condition = DEPLOY = true
-  condition = ODOMETRY_DIST_AT_DEPTH>=200
-  perpetual = true
-  updates   = RETURN_UPDATE
-  endflag   = RETURN = true
-  endflag   = DEPLOY = false
-  endflag   = MISSION = complete
-	
-           speed = 2.0
-  capture_radius = 2.0
-     slip_radius = 8.0
-          points = 0,0
  }

@@ -1,13 +1,13 @@
 //-------------------------------------------------
 // NAME: Adam Cohen
 //--------    Date: 3/4/25   -------------
-// FILE: bravo_uuv_surface.moos
+// FILE: bravo_uuv.moos
 //-------------------------------------------------
 
 ServerHost   = localhost
 ServerPort   = 9000
 Community    = bravo
-MOOSTimeWarp = 10
+MOOSTimeWarp = 20
 
 // Forest Lake
 LatOrigin  = 43.825300
@@ -24,11 +24,10 @@ ProcessConfig = ANTLER
   Run = uSimMarineV22   @ NewConsole = false
   Run = pMarinePIDV22   @ NewConsole = false
   Run = pHelmIvP        @ NewConsole = false
-  Run = pMarineViewer  	@ NewConsole = false
-  Run = uProcessWatch 	@ NewConsole = false
-  Run = pNodeReporter 	@ NewConsole = false
+  Run = pMarineViewer	@ NewConsole = false
+  Run = uProcessWatch	@ NewConsole = false
+  Run = pNodeReporter	@ NewConsole = false
   Run = pRealm	        @ NewConsole = false
-  Run = pOdometry       @ NewConsole = false
 }
 //------------------------------------------
 // pLogger config block
@@ -95,7 +94,7 @@ ProcessConfig = pHelmIvP
   AppTick    = 4
   CommsTick  = 4
 
-  behaviors  = bravo_uuv_surface.bhv
+  behaviors  = bravo_uuv.bhv
   domain     = course:0:359:360
   domain     = speed:0:4:41
   domain     = depth:0:100:101
@@ -171,6 +170,11 @@ ProcessConfig = pMarineViewer
 
   trails_point_size   = 1
 
+	//op_vertex = x=-83, y=-47,    lwidth=1,lcolor=yellow,looped=true,group=moa
+  //op_vertex = x=-46.4, y=-129.2, lwidth=1,lcolor=yellow,looped=true,group=moa
+  //op_vertex = x=94.6, y=-62.2,   lwidth=1,lcolor=yellow,looped=true,group=moa
+  //op_vertex = x=58,   y=20,    lwidth=1,lcolor=yellow,looped=true,group=moa
+
   // Appcast configuration
   appcast_height       = 75
   appcast_width        = 30
@@ -179,6 +183,14 @@ ProcessConfig = pMarineViewer
   nodes_font_size      = xlarge
   procs_font_size      = xlarge
   appcast_font_size    = large
+  
+  // datum_viewable = true
+  // datum_size     = 18
+  // gui_size = small
+
+  // left_context[survey-point] = DEPLOY=true
+  // left_context[survey-point] = MOOS_MANUAL_OVERRIDE=false
+  // left_context[survey-point] = RETURN=false
 
   right_context[return] = DEPLOY=true
   right_context[return] = MOOS_MANUAL_OVERRIDE=false
@@ -221,15 +233,4 @@ ProcessConfig = pNodeReporter
   platform_type = UUV
 }
 
-//------------------------------------------
-// pOdometry config block
 
-ProcessConfig = pOdometry
-{
-  AppTick	  = 10
-  CommsTick	= 10
-  app_logging=log
-  nav_stale_thresh = 10    // Set threshold to 15 seconds
-  distance_units = feet    // Options: meters, feet, yards, kilometers, miles
-  depth_thresh = 25
-}
