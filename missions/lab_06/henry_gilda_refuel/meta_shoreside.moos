@@ -37,11 +37,11 @@ ProcessConfig = uFldShoreBroker
   qbridge  = DEPLOY, NODE_REPORT
   qbridge  = STATION_KEEP, APPCAST_REQ
   qbridge  = MOOS_MANUAL_OVERRIDE, 
-  
-  bridge   = src=REFUEL_NEEDED_ALL, alias=REFUEL
 
   bridge   = src=RETURN_ALL, alias=RETURN
   bridge   = src=RETURN_$V,  alias=RETURN
+
+  bridge   = src=REFUEL_NEEDED_ALL, alias=REFUEL_NEEDED
 }
 
 //--------------------------------------------------------
