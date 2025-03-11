@@ -70,9 +70,12 @@ ProcessConfig = pMarineViewer
   // left_context[survey-point] = MOOS_MANUAL_OVERRIDE=false
   // left_context[survey-point] = RETURN=false
 
-  right_context[return] = DEPLOY=true
-  right_context[return] = MOOS_MANUAL_OVERRIDE=false
-  right_context[return] = RETURN=false
+  right_context[return] = DEPLOY_ALPHA=true
+  right_context[return] = DEPLOY_BRAVO=true
+  right_context[return] = MOOS_MANUAL_OVERRIDE_ALPHA=false
+  right_context[return] = MOOS_MANUAL_OVERRIDE_BRAVO=false
+  right_context[return] = RETURN_ALPHA=false
+  right_context[return] = RETURN_BRAVO=false
 
   scope  = SUMMARY
   scope  = RETURN
@@ -83,14 +86,19 @@ ProcessConfig = pMarineViewer
   scope  = MVIEWER_LCLICK
   scope  = MVIEWER_RCLICK
 
-  button_one = DEPLOY # DEPLOY=true
-  button_one = MOOS_MANUAL_OVERRIDE=false # RETURN=false
-  button_two = RETURN # RETURN=true
+  button_one = DEPLOY # DEPLOY_ALPHA=true
+  button_one = DEPLOY # DEPLOY_BRAVO=true
+  button_one = MOOS_MANUAL_OVERRIDE_ALPHA=false # RETURN=false
+  button_one = MOOS_MANUAL_OVERRIDE_BRAVO=false # RETURN=false
+  button_two = RETURN # RETURN_ALPHA=true
+  button_two = RETURN # RETURN_BRAVO=true
   button_three = SLOWER # WPT_UPDATE=speed=1.5
   button_four = FASTER # WPT_UPDATE=speed=3.5
 
-  action  = MENU_KEY=deploy # DEPLOY = true # RETURN = false
-  action+ = MENU_KEY=deploy # MOOS_MANUAL_OVERRIDE=false
+  action  = MENU_KEY=deploy # DEPLOY_ALPHA = true # RETURN_ALPHA = false
+  action  = MENU_KEY=deploy # DEPLOY_BRAVO = true # RETURN_BRAVO = false
+  action+ = MENU_KEY=deploy # MOOS_MANUAL_OVERRIDE_ALPHA=false
+  action+ = MENU_KEY=deploy # MOOS_MANUAL_OVERRIDE_BRAVO=false
   action  = RETURN=true
   action  = UPDATES_RETURN=speed=1.4
 }
@@ -106,11 +114,14 @@ ProcessConfig = pShare
    input = src_name=*, route=localhost:9200
 
 // deploy
-   output = src_name=DEPLOY, route=localhost:9201, dest_name=DEPLOY
+   output = src_name=DEPLOY_ALPHA, route=localhost:9201, dest_name=DEPLOY
+   output = src_name=DEPLOY_BRAVO, route=localhost:9202, dest_name=DEPLOY
 
 // return
-   output = src_name=RETURN, route=localhost:9201, dest_name=RETURN
+   output = src_name=RETURN_ALPHA, route=localhost:9201, dest_name=RETURN
+   output = src_name=RETURN_BRAVO, route=localhost:9202, dest_name=RETURN
 
 // Manual Override
-   output = src_name=MOOS_MANUAL_OVERRIDE, route=localhost:9201, dest_name=MOOS_MANUAL_OVERRIDE
+   output = src_name=MOOS_MANUAL_OVERRIDE_ALPHA, route=localhost:9201, dest_name=MOOS_MANUAL_OVERRIDE
+   output = src_name=MOOS_MANUAL_OVERRIDE_BRAVO, route=localhost:9202, dest_name=MOOS_MANUAL_OVERRIDE
 }
