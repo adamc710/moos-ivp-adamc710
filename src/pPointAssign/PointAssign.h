@@ -1,5 +1,5 @@
 /************************************************************/
-/*    NAME: Your Name                                       */
+/*    NAME: Adam Cohen                                      */
 /*    ORGN: MIT, Cambridge MA                               */
 /*    FILE: PointAssign.h                                   */
 /*    DATE: March 13, 2025                                  */
