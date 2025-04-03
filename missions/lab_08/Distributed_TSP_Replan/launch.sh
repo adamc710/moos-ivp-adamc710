@@ -91,6 +91,7 @@ done
 #------------------------------------------------------------
 #  Part 4: Set starting positions, speeds, vnames, colors
 #------------------------------------------------------------
+
 INIT_VARS=" --amt=$VAMT $RAND_VPOS $VERBOSE "
 ./init_field.sh $INIT_VARS
 
@@ -99,6 +100,7 @@ VLOCAS=(`cat vlocations.txt`)
 SPEEDS=(`cat vspeeds.txt`)
 VNAMES=(`cat vnames.txt`)
 VCOLOR=(`cat vcolors.txt`)
+
 
 #------------------------------------------------------------
 #  Part 5: If verbose, show vars and confirm before launching
@@ -139,7 +141,7 @@ for IX in `seq 1 $VAMT`;
 do
     IXX=$(($IX - 1))
     IVARGS="$VARGS --mport=900${IX}  --pshare=920${IX} "
-    IVARGS+=" --start_pos=${VEHPOS[$IXX]} "
+    #IVARGS+=" --start_pos=${VEHPOS[$IXX]} "
     IVARGS+=" --goto_loc=${VLOCAS[$IXX]} "
     IVARGS+=" --stock_spd=${SPEEDS[$IXX]} "
     IVARGS+=" --vname=${VNAMES[$IXX]} "

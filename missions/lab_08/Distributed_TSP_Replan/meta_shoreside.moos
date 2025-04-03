@@ -2,7 +2,7 @@
 // ShoreSide Configuration File
 
 ServerHost = localhost
-ServerPort = $(VPORT)
+ServerPort = $(MOOS_PORT)
 Community  = $(VNAME)
 
 #include plug_origin_warp.moos
