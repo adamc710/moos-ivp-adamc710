@@ -22,6 +22,7 @@ Processconfig = ANTLER
   Run = pRealm           @ NewConsole = false
   Run = uFldMessageHandler @  NewConsole = false
   Run = uTimerScript     @ NewConsole = false
+  Run = uTimerScript     @ NewConsole = false ~ search_TimerScript
 }
 
 #include plugs.moos <pShare>
@@ -57,8 +58,8 @@ ProcessConfig = uSimMarineV22
   start_pos = $(START_POS),speed=0
   prefix    = NAV
 
-	turn_rate = 80
-	
+  turn_rate = 80
+  
   //rotate_speed = 0.012
   //drift_x      = 0.0045
 
@@ -73,10 +74,10 @@ ProcessConfig = pHelmIvP
   AppTick    = 4
   CommsTick  = 4
   
-  behaviors    = targ_$(VNAME).bhv  
-  verbose      = false
-  Domain       = course:0:359:360
-  Domain       = speed:0:5:26
+  behaviors  = targ_$(VNAME).bhv  
+  verbose    = false
+  Domain     = course:0:359:360
+  Domain     = speed:0:5:26
 }
 
 //-----------------------------------------------------
@@ -84,7 +85,7 @@ ProcessConfig = pHelmIvP
 
 ProcessConfig = pMarinePIDV22
 {
-  AppTick    = 10ßßß
+  AppTick    = 10
   CommsTick  = 10
   
   verbose       = true
@@ -128,12 +129,12 @@ ProcessConfig = pNodeReporter
 
 ProcessConfig = pLogger
 {
-  AppTick 	= 5
-  CommsTick 	= 5
+  AppTick    = 5
+  CommsTick  = 5
   
-  File		= LOG_%(VNAME)
-  PATH		= ./
-  AsyncLog 	= true
+  File       = LOG_%(VNAME)
+  PATH       = ./
+  AsyncLog   = true
   FileTimeStamp = true
 
   // Log it all!!!!!
@@ -143,29 +144,52 @@ ProcessConfig = pLogger
 
 //--------------------------------------------------
 // uFldMessageHandler config block
- ProcessConfig = uFldMessageHandler
-  {
-    AppTick    = 2
-    CommsTick  = 2
+ProcessConfig = uFldMessageHandler
+{
+  AppTick    = 2
+  CommsTick  = 2
 
-    strict_addressing = false
-    msg_flag   = 
-  }
+  strict_addressing = false
+  
+  // Posts the current time whenever a message is received
+  msg_flag   = MY_RESET=true
+}
 
 //--------------------------------------------------
-// uTimerScript config block
+// uTimerScript config block for comms monitoring and search implementation
 ProcessConfig = uTimerScript
- {
-   AppTick    = 2
-   CommsTick  = 2
+{
+  AppTick    = 2
+  CommsTick  = 2
+  condition  = DEPLOY=true
+  
 
-   condition  = DEPLOY=true
-   randvar    = varname=YPOS, min=-125, max=0, key=at_reset
+  randvar    = varname=YPOS, min=-125, max=0, key=at_reset
+  event      = var=NODE_MESSAGE_LOCAL, val="src_node=$(VNAME), dest_node=all, var_name=UP_LOITER, string_val=ycenter_assign=$[YPOS]", time=60:90
+  event      = var=NODE_MESSAGE_LOCAL, val="src_node=$(VNAME), dest_node=all, var_name=SEARCH_MODE, string_val=false", time=50
 
-   // THE BELOW EVENT ALL ON ONE LINE IN THE ACTUAL MOOS FILE
+  // Tracking last message time
+  //paused     = false
+  //reset_max  = nolimit
+  reset_time = all-posted
+}
 
-   event      = var=NODE_MESSAGE_LOCAL, val="src_node=$(VNAME),dest_node=all, var_name=UP_LOITER,string_val=ycenter_assign=$[YPOS]", time=60:90 
+//--------------------------------------------------
+// uTimerScript config block for comms monitoring and search implementation
+ProcessConfig = search_TimerScript
+{
+  AppTick    = 2
+  CommsTick  = 2
+  condition  = DEPLOY=true
 
-   reset_max = nolimit
-   reset_time = all-posted
- }
+  // do reset when we get MSG_TIME
+  paused     = false
+  reset_max  = nolimit
+  reset_time = all-posted
+  reset_var  = SEARCH_MODE
+   
+  // Search Pattern
+  event      = var=SEARCH_MODE, val="true", time=250
+
+
+}
