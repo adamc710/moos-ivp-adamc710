@@ -124,33 +124,68 @@ IvPFunction *BHV_Scout::onRunState()
         return(0);
     }
 
-    // Execute zig-zag pattern every 20 seconds if we have a valid path
+    // Execute zig-zag pattern every 15 seconds if we have a valid path
     if(m_rescue_path.size() > 0 && 
-       (getBufferCurrTime() - m_last_zig_time > 20)) {
+       (getBufferCurrTime() - m_last_zig_time > 15)) {
         executeZigDeviation();
         m_last_zig_time = getBufferCurrTime();
     }
 
     // Check for unregistered swimmers in the area
-    bool ok_swimmer = false;
-    string swimmer_report = getBufferStringVal("SCOUTED_SWIMMER", ok_swimmer);
-    if(ok_swimmer && swimmer_report != "") {
-        // Parse the swimmer position as a polygon
-        XYPolygon swimmer_poly = string2Poly(swimmer_report);
-        if(swimmer_poly.is_convex()) {
-            // Get the center point of the swimmer polygon
-            double center_x = swimmer_poly.get_center_x();
-            double center_y = swimmer_poly.get_center_y();
-            XYPoint swimmer_pos(center_x, center_y);
+    if(getBufferVarUpdated("SCOUTED_SWIMMER")) {
+        string swimmer_report = getBufferStringVal("SCOUTED_SWIMMER");
+        if(swimmer_report != "") {
+            // Debug: Print the raw swimmer report
+            postEventMessage("Received swimmer report: " + swimmer_report);
             
-            // Report to rescue vehicle
-            if(m_tmate != "") {
-                string spec = swimmer_pos.get_spec();
-                postOffboardMessage(m_tmate, "SWIMMER_ALERT", spec);
-                postEventMessage("Reported unregistered swimmer to " + m_tmate);
+            // Parse the swimmer position as a polygon
+            XYPolygon swimmer_poly = string2Poly(swimmer_report);
+            
+            // Debug: Print polygon details
+            string poly_spec = swimmer_poly.get_spec();
+            postEventMessage("Parsed polygon: " + poly_spec);
+            
+            // Validate the polygon
+            if(swimmer_poly.size() >= 3) {
+                if(swimmer_poly.is_convex()) {
+                    // Get the center point of the swimmer polygon
+                    double center_x = swimmer_poly.get_center_x();
+                    double center_y = swimmer_poly.get_center_y();
+                    XYPoint swimmer_pos(center_x, center_y);
+                    
+                    // Visualize the swimmer polygon
+                    swimmer_poly.set_color("fill", "red");
+                    swimmer_poly.set_edge_size(2);
+                    postMessage("VIEW_POLYGON", swimmer_poly.get_spec());
+                    
+                    // Report to rescue vehicle
+                    if(m_tmate != "") {
+                        string spec = swimmer_pos.get_spec();
+                        postOffboardMessage(m_tmate, "SWIMMER_ALERT", spec);
+                        postEventMessage("Reported unregistered swimmer to " + m_tmate);
+                    }
+                } else {
+                    // For non-convex polygons, just use the center point
+                    double center_x = swimmer_poly.get_center_x();
+                    double center_y = swimmer_poly.get_center_y();
+                    XYPoint swimmer_pos(center_x, center_y);
+                    
+                    // Visualize the original polygon in orange
+                    swimmer_poly.set_color("fill", "orange");
+                    swimmer_poly.set_edge_size(2);
+                    postMessage("VIEW_POLYGON", swimmer_poly.get_spec());
+                    
+                    // Report to rescue vehicle
+                    if(m_tmate != "") {
+                        string spec = swimmer_pos.get_spec();
+                        postOffboardMessage(m_tmate, "SWIMMER_ALERT", spec);
+                        postEventMessage("Reported unregistered swimmer (non-convex) to " + m_tmate);
+                    }
+                }
+            } else {
+                postWMessage("Invalid swimmer polygon: too few vertices (" + 
+                           uintToString(swimmer_poly.size()) + ")");
             }
-        } else {
-            postWMessage("Invalid swimmer polygon detected: " + swimmer_report);
         }
     }
 
@@ -178,16 +213,20 @@ void BHV_Scout::executeZigDeviation() {
     double zig_angle = m_zig_direction ? 30 : -30;
     m_zig_direction = !m_zig_direction;
     
-    // Calculate new point 100m away at the zig-zag angle
+    // Calculate new point 75m away at the zig-zag angle
     double new_heading = heading + zig_angle;
-    double new_x = current_x + (100 * cos(new_heading * M_PI/180));
-    double new_y = current_y + (100 * sin(new_heading * M_PI/180));
+    double new_x = current_x + (75 * cos(new_heading * M_PI/180));
+    double new_y = current_y + (75 * sin(new_heading * M_PI/180));
     
+    // Create a temporary point for visualization
+    XYPoint temp_point(new_x, new_y);
+    temp_point.set_vertex_color("yellow");
+    temp_point.set_vertex_size(3);
+    postMessage("VIEW_POINT", temp_point.get_spec());
+    
+    // Set the target point
     XYPoint target(new_x, new_y);
     postWaypoint(target);
-    
-    // Return to original path after deviation
-    postReturnToPath();
 }
 
 //-----------------------------------------------------------
