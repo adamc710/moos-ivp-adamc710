@@ -23,42 +23,60 @@
 #ifndef BHV_SCOUT_HEADER
 #define BHV_SCOUT_HEADER
 
-#include <string>
 #include "IvPBehavior.h"
+#include "XYSegList.h"
 #include "XYPoint.h"
 #include "XYPolygon.h"
+#include <vector>
 
 class BHV_Scout : public IvPBehavior {
 public:
   BHV_Scout(IvPDomain);
   ~BHV_Scout() {};
   
-  bool         setParam(std::string, std::string);
+  bool         setParam(string, string);
   void         onIdleState();
+  void         onEveryState(string);
   IvPFunction* onRunState();
-  void         onEveryState(std::string);
-  
+
 protected:
-  IvPFunction* buildFunction();
+  // Core behavior functions
   void         updateScoutPoint();
-  void         postViewPoint(bool viewable=true);
+  void         postViewPoint(bool);
+  IvPFunction* buildFunction();
+  
+  // Path following and zig-zag functions
+  void         executeZigDeviation();
+  void         postWaypoint(const XYPoint&);
+  void         postReturnToPath();
+  XYPoint      createLegPoint(double angle, double distance);
+  
+  // Swimmer detection and reporting
+  void         reportSwimmer(const XYPoint&);
+  void         handleNewSwimmer(const XYPoint&);
 
-protected: // State variables
-  double   m_osx;
-  double   m_osy;
-  double   m_curr_time;
-
-  double   m_ptx;
-  double   m_pty;
-  bool     m_pt_set;
-
-  XYPolygon m_rescue_region;
-
-protected: // Config variables
-  double m_capture_radius;
-  double m_desired_speed;
-
-  std::string m_tmate;
+private:
+  // State variables
+  double       m_osx;           // Current X position
+  double       m_osy;           // Current Y position
+  double       m_ptx;           // Target X position
+  double       m_pty;           // Target Y position
+  bool         m_pt_set;        // Whether target point is set
+  double       m_curr_time;     // Current time
+  
+  // Configuration parameters
+  double       m_desired_speed; // Desired speed in m/s
+  double       m_capture_radius;// Radius to consider waypoint reached
+  string       m_tmate;         // Teammate (rescue vehicle) name
+  
+  // Path following variables
+  XYSegList    m_rescue_path;   // Path received from rescue vehicle
+  double       m_last_zig_time; // Last time zig-zag was executed
+  bool         m_zig_direction; // Current zig-zag direction
+  XYPolygon    m_rescue_region; // Region to scout
+  
+  // Swimmer tracking
+  vector<XYPoint> m_swimmer_targets; // List of detected swimmers
 };
 
 #define IVP_EXPORT_FUNCTION

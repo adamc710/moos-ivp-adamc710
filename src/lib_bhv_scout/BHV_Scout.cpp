@@ -15,6 +15,7 @@
 #include "ZAIC_PEAK.h"
 #include "OF_Coupler.h"
 #include "XYFormatUtilsPoly.h"
+#include "XYFormatUtilsSegl.h"
 
 using namespace std;
 
@@ -36,10 +37,12 @@ BHV_Scout::BHV_Scout(IvPDomain gdomain) :
   m_capture_radius = 10;
 
   m_pt_set = false;
+  m_zig_direction = false;
   
-  addInfoVars("NAV_X, NAV_Y");
+  addInfoVars("NAV_X, NAV_Y", "NAV_HEADING");
   addInfoVars("RESCUE_REGION");
   addInfoVars("SCOUTED_SWIMMER");
+  addInfoVars("SURVEY_UPDATE");
 }
 
 //---------------------------------------------------------------
@@ -97,37 +100,94 @@ void BHV_Scout::onIdleState()
 
 IvPFunction *BHV_Scout::onRunState() 
 {
-  // Part 1: Get vehicle position from InfoBuffer and post a 
-  // warning if problem is encountered
-  bool ok1, ok2;
-  m_osx = getBufferDoubleVal("NAV_X", ok1);
-  m_osy = getBufferDoubleVal("NAV_Y", ok2);
-  if(!ok1 || !ok2) {
-    postWMessage("No ownship X/Y info in info_buffer.");
-    return(0);
-  }
-  
-  // Part 2: Determine if the vehicle has reached the destination 
-  // point and if so, declare completion.
-  updateScoutPoint();
-  double dist = hypot((m_ptx-m_osx), (m_pty-m_osy));
-  //postEventMessage("Dist=" + doubleToStringX(dist,1));
-  if(dist <= m_capture_radius) {
-    m_pt_set = false;
-    postViewPoint(false);
-    return(0);
-  }
+    // Check for new path updates
+    bool ok_path_update = false; 
+    string path_spec = getBufferStringVal("SURVEY_UPDATE", ok_path_update);
+    
+    if(ok_path_update && path_spec != "") {
+        m_rescue_path = string2SegList(path_spec);
+        if(m_rescue_path.size() > 0) {
+            postEventMessage("Received new rescue path with " + 
+                           uintToString(m_rescue_path.size()) + " segments");
+            // Post the path for visualization
+            string path_spec = m_rescue_path.get_spec();
+            postMessage("VIEW_SEGLIST", path_spec);
+        }
+    }
+    
+    // Get vehicle position
+    bool ok1, ok2;
+    m_osx = getBufferDoubleVal("NAV_X", ok1);
+    m_osy = getBufferDoubleVal("NAV_Y", ok2);
+    if(!ok1 || !ok2) {
+        postWMessage("No ownship X/Y info in info_buffer.");
+        return(0);
+    }
 
-  // Part 3: Post the waypoint as a string for consumption by 
-  // a viewer application.
-  postViewPoint(true);
+    // Execute zig-zag pattern every 20 seconds if we have a valid path
+    if(m_rescue_path.size() > 0 && 
+       (getBufferCurrTime() - m_last_zig_time > 20)) {
+        executeZigDeviation();
+        m_last_zig_time = getBufferCurrTime();
+    }
 
-  // Part 4: Build the IvP function 
-  IvPFunction *ipf = buildFunction();
-  if(ipf == 0) 
-    postWMessage("Problem Creating the IvP Function");
-  
-  return(ipf);
+    // Check for unregistered swimmers in the area
+    bool ok_swimmer = false;
+    string swimmer_report = getBufferStringVal("SCOUTED_SWIMMER", ok_swimmer);
+    if(ok_swimmer && swimmer_report != "") {
+        // Parse the swimmer position as a polygon
+        XYPolygon swimmer_poly = string2Poly(swimmer_report);
+        if(swimmer_poly.is_convex()) {
+            // Get the center point of the swimmer polygon
+            double center_x = swimmer_poly.get_center_x();
+            double center_y = swimmer_poly.get_center_y();
+            XYPoint swimmer_pos(center_x, center_y);
+            
+            // Report to rescue vehicle
+            if(m_tmate != "") {
+                string spec = swimmer_pos.get_spec();
+                postOffboardMessage(m_tmate, "SWIMMER_ALERT", spec);
+                postEventMessage("Reported unregistered swimmer to " + m_tmate);
+            }
+        } else {
+            postWMessage("Invalid swimmer polygon detected: " + swimmer_report);
+        }
+    }
+
+    // Build the IvP function for navigation
+    IvPFunction *ipf = buildFunction();
+    if(ipf == 0) 
+        postWMessage("Problem Creating the IvP Function");
+    
+    return(ipf);
+}
+
+void BHV_Scout::executeZigDeviation() {
+    // Get current position and heading
+    bool ok1, ok2, ok3;
+    double current_x = getBufferDoubleVal("NAV_X", ok1);
+    double current_y = getBufferDoubleVal("NAV_Y", ok2);
+    double heading = getBufferDoubleVal("NAV_HEADING", ok3);
+    
+    if(!ok1 || !ok2 || !ok3) {
+        postWMessage("Missing navigation information for zig-zag");
+        return;
+    }
+
+    // Calculate zig-zag angle (30 degrees to alternating sides)
+    double zig_angle = m_zig_direction ? 30 : -30;
+    m_zig_direction = !m_zig_direction;
+    
+    // Calculate new point 100m away at the zig-zag angle
+    double new_heading = heading + zig_angle;
+    double new_x = current_x + (100 * cos(new_heading * M_PI/180));
+    double new_y = current_y + (100 * sin(new_heading * M_PI/180));
+    
+    XYPoint target(new_x, new_y);
+    postWaypoint(target);
+    
+    // Return to original path after deviation
+    postReturnToPath();
 }
 
 //-----------------------------------------------------------
@@ -193,38 +253,138 @@ void BHV_Scout::postViewPoint(bool viewable)
 
 IvPFunction *BHV_Scout::buildFunction() 
 {
-  if(!m_pt_set)
-    return(0);
-  
-  ZAIC_PEAK spd_zaic(m_domain, "speed");
-  spd_zaic.setSummit(m_desired_speed);
-  spd_zaic.setPeakWidth(0.5);
-  spd_zaic.setBaseWidth(1.0);
-  spd_zaic.setSummitDelta(0.8);  
-  if(spd_zaic.stateOK() == false) {
-    string warnings = "Speed ZAIC problems " + spd_zaic.getWarnings();
-    postWMessage(warnings);
-    return(0);
-  }
-  
-  double rel_ang_to_wpt = relAng(m_osx, m_osy, m_ptx, m_pty);
-  ZAIC_PEAK crs_zaic(m_domain, "course");
-  crs_zaic.setSummit(rel_ang_to_wpt);
-  crs_zaic.setPeakWidth(0);
-  crs_zaic.setBaseWidth(180.0);
-  crs_zaic.setSummitDelta(0);  
-  crs_zaic.setValueWrap(true);
-  if(crs_zaic.stateOK() == false) {
-    string warnings = "Course ZAIC problems " + crs_zaic.getWarnings();
-    postWMessage(warnings);
-    return(0);
-  }
+    // Get vehicle position
+    bool ok1, ok2;
+    m_osx = getBufferDoubleVal("NAV_X", ok1);
+    m_osy = getBufferDoubleVal("NAV_Y", ok2);
+    if(!ok1 || !ok2) {
+        postWMessage("No ownship X/Y info in info_buffer.");
+        return(0);
+    }
 
-  IvPFunction *spd_ipf = spd_zaic.extractIvPFunction();
-  IvPFunction *crs_ipf = crs_zaic.extractIvPFunction();
+    // If we have a rescue path, follow it
+    if(m_rescue_path.size() > 0) {
+        // Get the next point to follow on the path
+        // Look ahead 3 points to stay ahead of rescue vehicle
+        unsigned int look_ahead = 3;
+        unsigned int target_idx = (look_ahead < m_rescue_path.size()) ? look_ahead : 0;
+        
+        double next_x = m_rescue_path.get_point(target_idx).x();
+        double next_y = m_rescue_path.get_point(target_idx).y();
+        
+        // Calculate distance to next point
+        double dist = hypot((next_x - m_osx), (next_y - m_osy));
+        
+        // If we're close enough to the point, remove it from the path
+        if(dist < m_capture_radius) {
+            m_rescue_path.get_point(0);
+            if(m_rescue_path.size() > 0) {
+                target_idx = (look_ahead < m_rescue_path.size()) ? look_ahead : 0;
+                next_x = m_rescue_path.get_point(target_idx).x();
+                next_y = m_rescue_path.get_point(target_idx).y();
+            }
+        }
+        
+        // Build speed function
+        ZAIC_PEAK spd_zaic(m_domain, "speed");
+        spd_zaic.setSummit(m_desired_speed);
+        spd_zaic.setPeakWidth(0.5);
+        spd_zaic.setBaseWidth(1.0);
+        spd_zaic.setSummitDelta(0.8);  
+        if(spd_zaic.stateOK() == false) {
+            string warnings = "Speed ZAIC problems " + spd_zaic.getWarnings();
+            postWMessage(warnings);
+            return(0);
+        }
+        
+        // Build heading function
+        double rel_ang_to_wpt = relAng(m_osx, m_osy, next_x, next_y);
+        ZAIC_PEAK crs_zaic(m_domain, "course");
+        crs_zaic.setSummit(rel_ang_to_wpt);
+        crs_zaic.setPeakWidth(0);
+        crs_zaic.setBaseWidth(180.0);
+        crs_zaic.setSummitDelta(0);  
+        crs_zaic.setValueWrap(true);
+        if(crs_zaic.stateOK() == false) {
+            string warnings = "Course ZAIC problems " + crs_zaic.getWarnings();
+            postWMessage(warnings);
+            return(0);
+        }
 
-  OF_Coupler coupler;
-  IvPFunction *ivp_function = coupler.couple(crs_ipf, spd_ipf, 50, 50);
+        IvPFunction *spd_ipf = spd_zaic.extractIvPFunction();
+        IvPFunction *crs_ipf = crs_zaic.extractIvPFunction();
 
-  return(ivp_function);
+        OF_Coupler coupler;
+        IvPFunction *ivp_function = coupler.couple(crs_ipf, spd_ipf, 50, 50);
+        return(ivp_function);
+    }
+    
+    // If no path, return null
+    return(0);
 }
+
+XYPoint BHV_Scout::createLegPoint(double angle, double distance) {
+    double current_x = getBufferDoubleVal("NAV_X");
+    double current_y = getBufferDoubleVal("NAV_Y");
+    
+    double new_x = current_x + distance * cos(angle * M_PI/180);
+    double new_y = current_y + distance * sin(angle * M_PI/180);
+    
+    return XYPoint(new_x, new_y);
+}
+
+void BHV_Scout::postWaypoint(const XYPoint& point) {
+    string point_spec = point.get_spec();
+    postMessage("WAYPOINT", point_spec);
+}
+
+void BHV_Scout::postReturnToPath() {
+    // Get current position
+    bool ok1, ok2;
+    double current_x = getBufferDoubleVal("NAV_X", ok1);
+    double current_y = getBufferDoubleVal("NAV_Y", ok2);
+    if(!ok1 || !ok2) {
+        postWMessage("No ownship X/Y info in info_buffer.");
+        return;
+    }
+
+    // Find the nearest point on the rescue path
+    if(m_rescue_path.size() == 0) {
+        postWMessage("No rescue path available");
+        return;
+    }
+
+    // Find the closest segment in the path
+    double min_dist = -1;
+    XYPoint return_point;
+    
+    for(unsigned int i=0; i<m_rescue_path.size(); i++) {
+        XYPoint seg_point = m_rescue_path.get_point(i);
+        double dist = hypot((seg_point.x() - current_x), (seg_point.y() - current_y));
+        
+        if(min_dist == -1 || dist < min_dist) {
+            min_dist = dist;
+            return_point = seg_point;
+        }
+    }
+
+    // Post the return waypoint
+    postWaypoint(return_point);
+}
+
+void BHV_Scout::reportSwimmer(const XYPoint& position) {
+    string spec = position.get_spec();
+    postMessage("UNREG_SWIMMER", spec);
+}
+
+// Add handler for UNREG_SWIMMER messages
+void BHV_Scout::handleNewSwimmer(const XYPoint& position) {
+    m_swimmer_targets.push_back(position);
+    postEventMessage("Added new swimmer to targets list");
+}
+
+XYSegList m_rescue_path;
+double m_last_zig_time;
+bool m_zig_direction;
+string m_tmate;  // teammate name (rescue vehicle)
+
