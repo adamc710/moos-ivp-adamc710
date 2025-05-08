@@ -16,6 +16,7 @@
 #include "OF_Coupler.h"
 #include "XYFormatUtilsPoly.h"
 #include "XYFormatUtilsSegl.h"
+#include "XYFormatUtilsPoint.h"
 
 using namespace std;
 
@@ -138,12 +139,13 @@ IvPFunction *BHV_Scout::onRunState()
             // Debug: Print the raw swimmer report
             postEventMessage("Received swimmer report: " + swimmer_report);
             
-            // Parse the swimmer position as a polygon
+            // Try to parse as a polygon first
             XYPolygon swimmer_poly = string2Poly(swimmer_report);
             
             // Debug: Print polygon details
             string poly_spec = swimmer_poly.get_spec();
             postEventMessage("Parsed polygon: " + poly_spec);
+            postEventMessage("Polygon size: " + uintToString(swimmer_poly.size()));
             
             // Validate the polygon
             if(swimmer_poly.size() >= 3) {
@@ -153,16 +155,21 @@ IvPFunction *BHV_Scout::onRunState()
                     double center_y = swimmer_poly.get_center_y();
                     XYPoint swimmer_pos(center_x, center_y);
                     
-                    // Visualize the swimmer polygon
-                    swimmer_poly.set_color("fill", "red");
-                    swimmer_poly.set_edge_size(2);
-                    postMessage("VIEW_POLYGON", swimmer_poly.get_spec());
-                    
-                    // Report to rescue vehicle
-                    if(m_tmate != "") {
-                        string spec = swimmer_pos.get_spec();
-                        postOffboardMessage(m_tmate, "SWIMMER_ALERT", spec);
-                        postEventMessage("Reported unregistered swimmer to " + m_tmate);
+                    // Check if the swimmer is within the rescue region
+                    if(m_rescue_region.contains(swimmer_pos)) {
+                        // Visualize the swimmer polygon
+                        swimmer_poly.set_color("fill", "red");
+                        swimmer_poly.set_edge_size(2);
+                        postMessage("VIEW_POLYGON", swimmer_poly.get_spec());
+                        
+                        // Report to rescue vehicle
+                        if(m_tmate != "") {
+                            string spec = swimmer_pos.get_spec();
+                            postOffboardMessage(m_tmate, "SWIMMER_ALERT", spec);
+                            postEventMessage("Reported unregistered swimmer to " + m_tmate);
+                        }
+                    } else {
+                        postEventMessage("Swimmer detected outside rescue region");
                     }
                 } else {
                     // For non-convex polygons, just use the center point
@@ -170,21 +177,57 @@ IvPFunction *BHV_Scout::onRunState()
                     double center_y = swimmer_poly.get_center_y();
                     XYPoint swimmer_pos(center_x, center_y);
                     
-                    // Visualize the original polygon in orange
-                    swimmer_poly.set_color("fill", "orange");
-                    swimmer_poly.set_edge_size(2);
-                    postMessage("VIEW_POLYGON", swimmer_poly.get_spec());
-                    
-                    // Report to rescue vehicle
-                    if(m_tmate != "") {
-                        string spec = swimmer_pos.get_spec();
-                        postOffboardMessage(m_tmate, "SWIMMER_ALERT", spec);
-                        postEventMessage("Reported unregistered swimmer (non-convex) to " + m_tmate);
+                    // Check if the swimmer is within the rescue region
+                    if(m_rescue_region.contains(swimmer_pos)) {
+                        // Visualize the original polygon in orange
+                        swimmer_poly.set_color("fill", "orange");
+                        swimmer_poly.set_edge_size(2);
+                        postMessage("VIEW_POLYGON", swimmer_poly.get_spec());
+                        
+                        // Report to rescue vehicle
+                        if(m_tmate != "") {
+                            string spec = swimmer_pos.get_spec();
+                            postOffboardMessage(m_tmate, "SWIMMER_ALERT", spec);
+                            postEventMessage("Reported unregistered swimmer (non-convex) to " + m_tmate);
+                        }
+                    } else {
+                        postEventMessage("Swimmer detected outside rescue region");
                     }
                 }
             } else {
-                postWMessage("Invalid swimmer polygon: too few vertices (" + 
-                           uintToString(swimmer_poly.size()) + ")");
+                // If polygon parsing failed, try to extract coordinates directly
+                vector<string> parts = parseString(swimmer_report, ',');
+                if(parts.size() >= 2) {
+                    double x = atof(parts[0].c_str());
+                    double y = atof(parts[1].c_str());
+                    XYPoint swimmer_pos(x, y);
+                    
+                    // Check if the coordinates are valid and within the rescue region
+                    if(m_rescue_region.contains(swimmer_pos)) {
+                        // Create a small square around the point
+                        XYPolygon swimmer_poly;
+                        swimmer_poly.add_vertex(x-5, y-5);
+                        swimmer_poly.add_vertex(x+5, y-5);
+                        swimmer_poly.add_vertex(x+5, y+5);
+                        swimmer_poly.add_vertex(x-5, y+5);
+                        
+                        // Visualize the swimmer polygon
+                        swimmer_poly.set_color("fill", "red");
+                        swimmer_poly.set_edge_size(2);
+                        postMessage("VIEW_POLYGON", swimmer_poly.get_spec());
+                        
+                        // Report to rescue vehicle
+                        if(m_tmate != "") {
+                            string spec = swimmer_pos.get_spec();
+                            postOffboardMessage(m_tmate, "SWIMMER_ALERT", spec);
+                            postEventMessage("Reported unregistered swimmer (coordinates) to " + m_tmate);
+                        }
+                    } else {
+                        postEventMessage("Swimmer coordinates outside rescue region");
+                    }
+                } else {
+                    postWMessage("Invalid swimmer format: " + swimmer_report);
+                }
             }
         }
     }
@@ -215,8 +258,8 @@ void BHV_Scout::executeZigDeviation() {
     
     // Calculate new point 75m away at the zig-zag angle
     double new_heading = heading + zig_angle;
-    double new_x = current_x + (75 * cos(new_heading * M_PI/180));
-    double new_y = current_y + (75 * sin(new_heading * M_PI/180));
+    double new_x = current_x + (25 * cos(new_heading * M_PI/180));
+    double new_y = current_y + (25 * sin(new_heading * M_PI/180));
     
     // Create a temporary point for visualization
     XYPoint temp_point(new_x, new_y);

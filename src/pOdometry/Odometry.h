@@ -42,7 +42,10 @@ class Odometry : public AppCastingMOOSApp
   double m_nav_stale_thresh;
   double m_unit_conversion;  // Multiplier for converting meters to desired units
   std::string m_unit_name;       // Name of the current unit (e.g., "meters", "feet", etc.)
- private: // State variables
+  double m_depth_thresh;
+  double m_current_depth;
+  double m_odometry_at_depth;
+  private: // State variables
 };
 
 #endif 

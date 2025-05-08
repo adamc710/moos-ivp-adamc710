@@ -10,6 +10,8 @@
 #include "ACTable.h"
 #include "Odometry.h"
 #include <cmath>
+#include <string>
+
 
 using namespace std;
 
@@ -26,6 +28,9 @@ Odometry::Odometry()
   m_total_distance = 0.0;
   m_timestamp = 0.0;
   m_nav_stale_thresh = 10.0;  // Default value if not specified in config
+  m_depth_thresh = 999999999;
+  m_current_depth = 0.0;
+  m_odometry_at_depth = 0.0;
   m_unit_conversion = 1.0;  // Default to meters (no conversion)
   m_unit_name = "meters";   // Default unit name
 }
@@ -56,7 +61,7 @@ bool Odometry::OnNewMail(MOOSMSG_LIST &NewMail)
     string key    = msg.GetKey();
     double dval   = msg.GetDouble();
     
-    if(key == "NAV_X" || key == "NAV_Y") {
+    if(key == "NAV_X" || key == "NAV_Y" || key == "NAV_DEPTH") {
       // Update timestamp when receiving any NAV data
       m_timestamp = MOOSTime();
       // Clear any existing NAV timeout warning
@@ -71,8 +76,9 @@ bool Odometry::OnNewMail(MOOSMSG_LIST &NewMail)
         } else {
           got_next_x = true;
         }
+        cout << "Got Nav X" << endl;
       }
-      else { // NAV_Y
+      else if(key == "NAV_Y") { // NAV_Y
         new_y = dval;
         if (got_next_x){
           m_position_queue.push(std::make_pair(new_x, new_y));
@@ -81,8 +87,12 @@ bool Odometry::OnNewMail(MOOSMSG_LIST &NewMail)
         } else {
           got_next_y = true;
         }
+        cout << "Got Nav Y" << endl;
       }
-    }
+      else if(key == "NAV_DEPTH"){
+        m_current_depth = dval;
+        cout << "Got Nav Depth" << endl;
+      }
     else if(key == "ODOMETRY_UNITS") {
       string value = msg.GetString();
       handleUnitChange(value);
@@ -91,7 +101,9 @@ bool Odometry::OnNewMail(MOOSMSG_LIST &NewMail)
       reportRunWarning("Unhandled Mail: " + key);
    }
    
-   return(true);
+   
+}
+    return(true);
 }
 
 //---------------------------------------------------------
@@ -145,6 +157,11 @@ bool Odometry::Iterate()
       
       // Add to total distance
       m_total_distance += step_distance;
+
+      // Process odometry only if depth > 25 meters
+      if(m_current_depth > m_depth_thresh) {
+        m_odometry_at_depth += step_distance;
+       }
     }
   }
 
@@ -154,6 +171,7 @@ bool Odometry::Iterate()
     Notify("ODOMETRY_DIST_" + toupper(m_unit_name), converted_dist);
   }
   Notify("ODOMETRY_DIST", m_total_distance);  // Always publish in meters
+  Notify("ODOMETRY_DIST_AT_DEPTH", m_odometry_at_depth);
   
   AppCastingMOOSApp::PostReport();
   return(true);
@@ -165,22 +183,29 @@ bool Odometry::Iterate()
 
 bool Odometry::OnStartUp()
 {
+  // Initialize base class
   AppCastingMOOSApp::OnStartUp();
 
+  // Container for configuration parameters
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(false);
+  // Attempt to read configuration block for this app
   if(!m_MissionReader.GetConfiguration(GetAppName(), sParams))
     reportConfigWarning("No config block found for " + GetAppName());
 
+  // Process each configuration parameter
   STRING_LIST::iterator p;
   for(p=sParams.begin(); p!=sParams.end(); p++) {
-    string orig  = *p;
-    string line  = *p;
-    string param = tolower(biteStringX(line, '='));
+    string orig  = *p;  // Store original parameter line for warning messages
+    string line  = *p;  // Working copy of the parameter line
+    // Split line into parameter name and value
+    string param = tolower(biteStringX(line, '='));  // Convert to lowercase for case-insensitive comparison
     string value = line;
 
+    // Track whether parameter was handled
     bool handled = false;
     if(param == "nav_stale_thresh") {
+      // Configure timeout threshold for NAV updates
       double thresh = atof(value.c_str());
       if (thresh <= 0) {
         reportConfigWarning("nav_stale_thresh must be greater than 0. Using default: 10.0");
@@ -190,19 +215,22 @@ bool Odometry::OnStartUp()
       }
     }
     else if(param == "distance_units") {
+      // Configure units for distance reporting (meters, feet, etc.)
       handled = handleUnitChange(value);
     }
-    else if(param == "foo") {
-      handled = true;
+    else if(param == "depth_thresh") {
+      handled = setDoubleOnString(m_depth_thresh, value);  // Placeholder for future parameter
     }
     else if(param == "bar") {
-      handled = true;
+      handled = true;  // Placeholder for future parameter
     }
 
+    // Report any unhandled parameters
     if(!handled)
       reportUnhandledConfigWarning(orig);
   }
   
+  // Register for variables we want to receive
   registerVariables();	
   return(true);
 }
@@ -215,6 +243,7 @@ void Odometry::registerVariables()
   AppCastingMOOSApp::RegisterVariables();
   Register("NAV_X", 0);
   Register("NAV_Y", 0);
+  Register("NAV_DEPTH", 0);
   Register("ODOMETRY_UNITS", 0);
 }
 
@@ -230,6 +259,7 @@ bool Odometry::buildReport()
   m_msgs << "Current Odometry:  " << m_total_distance << endl;
   m_msgs << "NAV X:  " << m_current_x << endl;
   m_msgs << "NAV Y:  " << m_current_y << endl;
+  m_msgs << "ODOMETRY_DIST_AT_DEPTH: " << m_odometry_at_depth << endl;
 
 
   ACTable actab(4);

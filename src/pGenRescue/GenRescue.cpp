@@ -1,7 +1,7 @@
 /************************************************************/
-/*    NAME: Eric Wang                                              */
+/*    NAME: Eric Wang                                       */
 /*    ORGN: MIT, Cambridge MA                               */
-/*    FILE: GenRescue.cpp                                        */
+/*    FILE: GenRescue.cpp                                   */
 /*    DATE: December 29th, 1963                             */
 /************************************************************/
 
@@ -300,12 +300,12 @@ void GenRescue::generatePath()
   node_message.setSourceNode(m_hostname);
   node_message.setDestNode(m_dest_name);
   node_message.setVarName(m_moos_varname);
-  node_message.setStringVal(update_str);
+  node_message.setStringVal(seglist.get_spec());
 
   string msg = node_message.getSpec();
 
-  Notify("SURVEY_UPDATE_LOCAL", msg); 
-
+  Notify("NODE_MESSAGE_LOCAL", msg); 
+ 
   string spec = seglist.get_spec();
   Notify("VIEW_SEGLIST", spec);
 
@@ -314,8 +314,6 @@ void GenRescue::generatePath()
   //Notify("SURVEY", "true");
   //Notify("RETURN", "false");
 }
-
-
 
 //------------------------------------------------------------
 // Procedure: buildReport()

@@ -27,10 +27,22 @@ public:
   IvPFunction* onRunState();
 
 protected: // Local Utility functions
+  void         updateInfoVars();
+  void         checkForWaypointChange();
+  void         checkForPulseTrigger();
+  void         sendRangePulse();
 
 protected: // Configuration parameters
+  double       m_pulse_range;
+  double       m_pulse_duration;
 
 protected: // State variables
+  double       m_osx;
+  double       m_osy;
+  int          m_curr_wpt_index;
+  int          m_prev_wpt_index;
+  double       m_wpt_change_time;
+  bool         m_pulse_pending;
 };
 
 #define IVP_EXPORT_FUNCTION
