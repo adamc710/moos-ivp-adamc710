@@ -35,7 +35,7 @@ BHV_Scout::BHV_Scout(IvPDomain gdomain) :
   // All distances are in meters, all speed in meters per second
   // Default values for configuration parameters 
   m_desired_speed  = 1; 
-  m_capture_radius = 10;
+  m_capture_radius = 20;
 
   m_pt_set = false;
   m_zig_direction = false;
@@ -44,6 +44,10 @@ BHV_Scout::BHV_Scout(IvPDomain gdomain) :
   addInfoVars("RESCUE_REGION");
   addInfoVars("SCOUTED_SWIMMER");
   addInfoVars("SURVEY_UPDATE");
+
+  m_last_zig_time = getBufferCurrTime();
+  m_zig_duration = 20;
+  m_zig_duration_portion = 0.6;
 }
 
 //---------------------------------------------------------------
@@ -101,6 +105,7 @@ void BHV_Scout::onIdleState()
 
 IvPFunction *BHV_Scout::onRunState() 
 {
+
     // Check for new path updates
     bool ok_path_update = false; 
     string path_spec = getBufferStringVal("SURVEY_UPDATE", ok_path_update);
@@ -126,10 +131,24 @@ IvPFunction *BHV_Scout::onRunState()
     }
 
     // Execute zig-zag pattern every 15 seconds if we have a valid path
-    if(m_rescue_path.size() > 0 && 
-       (getBufferCurrTime() - m_last_zig_time > 15)) {
-        executeZigDeviation();
-        m_last_zig_time = getBufferCurrTime();
+    double duration = getBufferCurrTime() - m_last_zig_time;
+    if(m_rescue_path.size() > 0 && (duration < m_zig_duration)) {
+      if((duration > (1-m_zig_duration_portion)/2*m_zig_duration) && (duration < m_zig_duration - (1-m_zig_duration_portion)/2*m_zig_duration)){
+        m_set_offset = m_zig_angle;
+
+        if (m_zig_trigger && duration > 4){
+          m_trigger_angle = getBufferDoubleVal("NAV_HEADING");
+          m_zig_trigger = false;
+        }
+      } else {
+        m_set_offset = 0;
+      }
+    } else {
+      m_last_zig_time = getBufferCurrTime();
+      m_zig_trigger = true;
+      m_zig_angle = m_zig_direction ? 60 : -60;
+      m_zig_direction = !m_zig_direction;
+      m_set_offset = 0;
     }
 
     // Check for unregistered swimmers in the area
@@ -240,37 +259,6 @@ IvPFunction *BHV_Scout::onRunState()
     return(ipf);
 }
 
-void BHV_Scout::executeZigDeviation() {
-    // Get current position and heading
-    bool ok1, ok2, ok3;
-    double current_x = getBufferDoubleVal("NAV_X", ok1);
-    double current_y = getBufferDoubleVal("NAV_Y", ok2);
-    double heading = getBufferDoubleVal("NAV_HEADING", ok3);
-    
-    if(!ok1 || !ok2 || !ok3) {
-        postWMessage("Missing navigation information for zig-zag");
-        return;
-    }
-
-    // Calculate zig-zag angle (30 degrees to alternating sides)
-    double zig_angle = m_zig_direction ? 30 : -30;
-    m_zig_direction = !m_zig_direction;
-    
-    // Calculate new point 75m away at the zig-zag angle
-    double new_heading = heading + zig_angle;
-    double new_x = current_x + (25 * cos(new_heading * M_PI/180));
-    double new_y = current_y + (25 * sin(new_heading * M_PI/180));
-    
-    // Create a temporary point for visualization
-    XYPoint temp_point(new_x, new_y);
-    temp_point.set_vertex_color("yellow");
-    temp_point.set_vertex_size(3);
-    postMessage("VIEW_POINT", temp_point.get_spec());
-    
-    // Set the target point
-    XYPoint target(new_x, new_y);
-    postWaypoint(target);
-}
 
 //-----------------------------------------------------------
 // Procedure: updateScoutPoint()
@@ -382,7 +370,12 @@ IvPFunction *BHV_Scout::buildFunction()
         // Build heading function
         double rel_ang_to_wpt = relAng(m_osx, m_osy, next_x, next_y);
         ZAIC_PEAK crs_zaic(m_domain, "course");
-        crs_zaic.setSummit(rel_ang_to_wpt);
+        if (m_set_offset != 0) {
+          crs_zaic.setSummit(rel_ang_to_wpt + m_set_offset);
+        } else {
+          crs_zaic.setSummit(rel_ang_to_wpt);
+        }
+        
         crs_zaic.setPeakWidth(0);
         crs_zaic.setBaseWidth(180.0);
         crs_zaic.setSummitDelta(0);  

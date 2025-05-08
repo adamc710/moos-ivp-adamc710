@@ -46,7 +46,6 @@ protected:
   IvPFunction* buildFunction();
   
   // Path following and zig-zag functions
-  void         executeZigDeviation();
   void         postWaypoint(const XYPoint&);
   void         postReturnToPath();
   XYPoint      createLegPoint(double angle, double distance);
@@ -74,6 +73,13 @@ private:
   double       m_last_zig_time; // Last time zig-zag was executed
   bool         m_zig_direction; // Current zig-zag direction
   XYPolygon    m_rescue_region; // Region to scout
+  bool         m_zig_trigger;
+  double       m_trigger_angle;
+  double       m_zig_angle;
+  double       m_set_offset;
+  double       m_zig_duration;
+  double       m_zig_duration_portion;
+
   
   // Swimmer tracking
   vector<XYPoint> m_swimmer_targets; // List of detected swimmers
