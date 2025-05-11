@@ -35,7 +35,7 @@ BHV_Scout::BHV_Scout(IvPDomain gdomain) :
   // All distances are in meters, all speed in meters per second
   // Default values for configuration parameters 
   m_desired_speed  = 1; 
-  m_capture_radius = 20;
+  m_capture_radius = 30;
 
   m_pt_set = false;
   m_zig_direction = false;
@@ -146,7 +146,7 @@ IvPFunction *BHV_Scout::onRunState()
     } else {
       m_last_zig_time = getBufferCurrTime();
       m_zig_trigger = true;
-      m_zig_angle = m_zig_direction ? 60 : -60;
+      m_zig_angle = m_zig_direction ? 80 : -80;
       m_zig_direction = !m_zig_direction;
       m_set_offset = 0;
     }
