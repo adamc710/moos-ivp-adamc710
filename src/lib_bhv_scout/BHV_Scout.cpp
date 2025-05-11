@@ -26,7 +26,7 @@ using namespace std;
 BHV_Scout::BHV_Scout(IvPDomain gdomain) : 
   IvPBehavior(gdomain)
 {
-  IvPBehavior::setParam("name", "ben");
+ // IvPBehavior::setParam("name", "ben");
  
   // Default values for behavior state variables
   m_osx  = 0;
